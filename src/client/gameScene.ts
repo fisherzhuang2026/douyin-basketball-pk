@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { getArenaPhase, getSettlementStats, type ArenaCallout, type ArenaPhase } from "./arenaPresentation";
+import { getArenaPhase, type ArenaCallout, type ArenaPhase } from "./arenaPresentation";
 import type { LeaderboardEntry, MatchSnapshot, ShotEvent, Team } from "./types";
 import {
   getBallRotation,
@@ -16,6 +16,7 @@ import {
 } from "./courtStyle";
 import { getAllGiftIconAssets } from "./giftIconAssets";
 import { PLAY_TITLE, formatShotStatus, getGiftEffectPresentation, type GiftEffectPresentation } from "./presentation";
+import { buildSettlementCeremony, type SettlementBoard, type SettlementCeremony, type SettlementPodiumSlot, type SettlementStatChip } from "./settlementPresentation";
 import { formatSeconds, getRemainingSeconds } from "./timer";
 
 const FONT_STACK = '"Microsoft YaHei", "PingFang SC", sans-serif';
@@ -866,184 +867,279 @@ export class BasketballScene extends Phaser.Scene {
   private renderAwardSettlement(snapshot: MatchSnapshot) {
     this.clearSettlement();
     const { width, height } = this.scale;
-    const winnerName = snapshot.winner === "draw" ? "双方平局" : snapshot.winner === "red" ? snapshot.redTeamName : snapshot.blueTeamName;
-    const winnerColor = snapshot.winner === "red" ? "#ff7a89" : snapshot.winner === "blue" ? "#67c6ff" : "#e2e8f0";
-    const mvp = snapshot.mvp;
-    const stats = getSettlementStats(snapshot);
+    const ceremony = buildSettlementCeremony(snapshot);
+    const accentHex = settlementToneHex(ceremony.winnerTone);
+    const accentColor = Phaser.Display.Color.HexStringToColor(accentHex).color;
 
-    const dim = this.add.rectangle(width / 2, height / 2, width, height, 0x020617, 0.78).setDepth(20);
-    const glow = this.add
-      .ellipse(width / 2, 120, 680, 160, snapshot.winner === "red" ? 0xff5a6b : snapshot.winner === "blue" ? 0x4eb5ff : 0xf8fafc, 0.08)
-      .setDepth(20);
+    const dim = this.trackSettlementObject(this.add.rectangle(width / 2, height / 2, width, height, 0x020617, 0.86).setDepth(20));
+    dim.setAlpha(0.9);
+
+    const leftLight = this.trackSettlementObject(this.add.triangle(width / 2 - 250, 68, 0, 0, -150, 430, 220, 430, accentColor, 0.08).setDepth(20), 40, 0);
+    const rightLight = this.trackSettlementObject(this.add.triangle(width / 2 + 250, 68, 0, 0, -220, 430, 150, 430, accentColor, 0.06).setDepth(20), 60, 0);
+    const halo = this.trackSettlementObject(this.add.ellipse(width / 2, 174, 690, 220, accentColor, 0.12).setDepth(20), 80, 0);
+
     const frame = this.add.graphics().setDepth(21);
-    frame.fillStyle(0x0f172a, 0.98);
-    frame.fillRoundedRect(52, 30, width - 104, height - 60, 26);
-    frame.lineStyle(3, snapshot.winner === "red" ? 0xff5a6b : snapshot.winner === "blue" ? 0x38bdf8 : 0xe2e8f0, 0.58);
-    frame.strokeRoundedRect(52, 30, width - 104, height - 60, 26);
-    frame.lineStyle(1, 0xfacc15, 0.36);
-    frame.strokeRoundedRect(68, 46, width - 136, height - 92, 20);
+    frame.fillStyle(0x0b1224, 0.98);
+    frame.fillRoundedRect(42, 24, width - 84, height - 48, 28);
+    frame.lineStyle(3, accentColor, 0.7);
+    frame.strokeRoundedRect(42, 24, width - 84, height - 48, 28);
+    frame.lineStyle(1, 0xfacc15, 0.32);
+    frame.strokeRoundedRect(62, 44, width - 124, height - 88, 22);
+    this.trackSettlementObject(frame, 90, 10);
 
     const title = this.add
-      .text(width / 2, 54, snapshot.winner === "draw" ? "本局结束：双方平局" : `本局结束：${winnerName} 获胜`, {
+      .text(width / 2, 38, ceremony.title, {
         fontFamily: FONT_STACK,
-        fontSize: "34px",
+        fontSize: "40px",
         fontStyle: "900",
-        color: winnerColor,
+        color: accentHex,
         stroke: "#020617",
-        strokeThickness: 7
+        strokeThickness: 8
       })
       .setOrigin(0.5, 0)
-      .setDepth(22);
+      .setDepth(24);
+    this.trackSettlementObject(title, 130, -20);
 
-    this.addScoreCard(236, 116, snapshot.redTeamName, snapshot.scores.red, "#ff7a89");
-    this.addScoreCard(width - 236, 116, snapshot.blueTeamName, snapshot.scores.blue, "#67c6ff");
-
-    const podium = this.add.graphics().setDepth(21);
-    podium.fillStyle(0x111827, 0.95);
-    podium.fillRoundedRect(104, 222, width - 208, 236, 20);
-    podium.lineStyle(1, 0x475569, 0.9);
-    podium.strokeRoundedRect(104, 222, width - 208, 236, 20);
-    podium.lineBetween(134, 322, width - 134, 322);
-    podium.lineBetween(width / 2, 344, width / 2, 434);
-
-    const boardTitle = this.add
-      .text(width / 2, 236, "赛后颁奖台 · MVP 与贡献榜 TOP5", settlementText("#f8fafc", "23px", "900"))
+    const scoreline = this.add
+      .text(width / 2, 84, `终场比分  ${ceremony.scoreline}`, settlementText("#f8fafc", "22px", "900"))
       .setOrigin(0.5, 0)
-      .setDepth(22);
+      .setDepth(24);
+    this.trackSettlementObject(scoreline, 180, -8);
 
-    const mvpRowY = 296;
-    const mvpBadge = mvp ? this.createStaticAvatarBadge(width / 2 - 164, mvpRowY, mvp.nickname, mvp.team, 19, mvp.avatarUrl).setDepth(22) : undefined;
-    const mvpText = this.add
-      .text(
-        width / 2 - 132,
-        mvpRowY,
-        mvp ? `MVP ${compactNickname(mvp.nickname)}   ${mvp.score}分   命中${mvp.hits}/${mvp.shots}` : "MVP 暂无有效贡献",
-        settlementText("#fef3c7", "18px", "900")
-      )
-      .setOrigin(0, 0.5)
-      .setDepth(22);
+    this.drawAwardScorePill(214, 102, snapshot.redTeamName, snapshot.scores.red, "#ff7a89", 220);
+    this.drawAwardScorePill(width - 214, 102, snapshot.blueTeamName, snapshot.scores.blue, "#67c6ff", 250);
+    this.drawPodiumStage(ceremony, width, 280);
+    this.drawContributionBoard(ceremony.boards.red, 78, 338, 382, 118, 540);
+    this.drawContributionBoard(ceremony.boards.blue, width - 460, 338, 382, 118, 570);
+    this.drawStatChips(ceremony.statChips, width, height - 92, 700);
 
-    const redList = this.add
-      .text(140, 344, `${snapshot.redTeamName} 前五\n${formatTeamRows(snapshot.teamLeaderboards.red)}`, settlementText("#fecaca", "16px", "800"))
-      .setDepth(22);
-    const blueList = this.add
-      .text(width / 2 + 32, 344, `${snapshot.blueTeamName} 前五\n${formatTeamRows(snapshot.teamLeaderboards.blue)}`, settlementText("#bfdbfe", "16px", "800"))
-      .setDepth(22);
-    const statsLine = this.add
-      .text(
-        width / 2,
-        height - 82,
-        `本场数据：总投篮 ${stats.totalShots} 次 · 点赞触发 ${stats.likeShots} 次 · 礼物触发 ${stats.giftShots} 次 · ${stats.bestStreakLabel}`,
-        settlementText("#cbd5e1", "15px", "800")
-      )
-      .setOrigin(0.5, 0)
-      .setDepth(22);
-    const footer = this.add
-      .text(width / 2, height - 54, "下一局重新开局后，观众需要重新选择阵营", {
-        fontFamily: FONT_STACK,
-        fontSize: "15px",
-        fontStyle: "700",
-        color: "#94a3b8"
-      })
-      .setOrigin(0.5, 0)
-      .setDepth(22);
-
-    this.settlementObjects.push(dim, glow, frame, title, podium, boardTitle, mvpText, redList, blueList, statsLine, footer);
-    if (mvpBadge) {
-      this.settlementObjects.push(mvpBadge);
-    }
+    this.addSettlementConfetti(ceremony, width);
+    this.tweens.add({
+      targets: [leftLight, rightLight, halo],
+      alpha: { from: 0.06, to: 0.16 },
+      duration: 1400,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1
+    });
   }
 
-  private renderSettlement(snapshot: MatchSnapshot) {
-    this.clearSettlement();
-    const { width, height } = this.scale;
-    const winnerName = snapshot.winner === "draw" ? "双方平局" : snapshot.winner === "red" ? snapshot.redTeamName : snapshot.blueTeamName;
-    const winnerColor = snapshot.winner === "red" ? "#ff7a89" : snapshot.winner === "blue" ? "#67c6ff" : "#e2e8f0";
-    const mvp = snapshot.mvp;
-
-    const dim = this.add.rectangle(width / 2, height / 2, width, height, 0x020617, 0.72).setDepth(20);
-    const frame = this.add.graphics().setDepth(21);
-    frame.fillStyle(0x0f172a, 0.98);
-    frame.fillRoundedRect(64, 38, width - 128, height - 76, 24);
-    frame.lineStyle(3, 0x38bdf8, 0.45);
-    frame.strokeRoundedRect(64, 38, width - 128, height - 76, 24);
-
-    const title = this.add
-      .text(width / 2, 62, snapshot.winner === "draw" ? "本局结束：双方平局" : `本局结束：${winnerName} 获胜`, {
-        fontFamily: FONT_STACK,
-        fontSize: "34px",
-        fontStyle: "900",
-        color: winnerColor
-      })
-      .setOrigin(0.5, 0)
-      .setDepth(22);
-
-    this.addScoreCard(248, 122, snapshot.redTeamName, snapshot.scores.red, "#ff7a89");
-    this.addScoreCard(width - 248, 122, snapshot.blueTeamName, snapshot.scores.blue, "#67c6ff");
-
-    const board = this.add.graphics().setDepth(21);
-    board.fillStyle(0x111827, 0.94);
-    board.fillRoundedRect(116, 246, width - 232, 222, 18);
-    board.lineStyle(1, 0x475569, 0.9);
-    board.strokeRoundedRect(116, 246, width - 232, 222, 18);
-    board.lineBetween(146, 336, width - 146, 336);
-    board.lineBetween(width / 2, 356, width / 2, 446);
-
-    const boardTitle = this.add
-      .text(width / 2, 260, "MVP 与贡献榜 TOP5", settlementText("#f8fafc", "24px", "900"))
-      .setOrigin(0.5, 0)
-      .setDepth(22);
-
-    const mvpRowY = 314;
-    const mvpBadge = mvp ? this.createStaticAvatarBadge(width / 2 - 138, mvpRowY, mvp.nickname, mvp.team, 16, mvp.avatarUrl).setDepth(22) : undefined;
-    const mvpText = this.add
-      .text(
-        width / 2 - 112,
-        mvpRowY,
-        mvp ? `MVP ${compactNickname(mvp.nickname)}   ${mvp.score}分   命中${mvp.hits}/${mvp.shots}` : "MVP 暂无有效贡献",
-        settlementText("#fef3c7", "18px", "800")
-      )
-      .setOrigin(0, 0.5)
-      .setDepth(22);
-
-    const redList = this.add
-      .text(152, 352, `${snapshot.redTeamName} 前五\n${formatTeamRows(snapshot.teamLeaderboards.red)}`, settlementText("#fecaca", "16px", "800"))
-      .setDepth(22);
-    const blueList = this.add
-      .text(width / 2 + 34, 352, `${snapshot.blueTeamName} 前五\n${formatTeamRows(snapshot.teamLeaderboards.blue)}`, settlementText("#bfdbfe", "16px", "800"))
-      .setDepth(22);
-    const footer = this.add
-      .text(width / 2, height - 60, "下一局重新开局后，观众需要重新选择阵营", {
-        fontFamily: FONT_STACK,
-        fontSize: "16px",
-        fontStyle: "700",
-        color: "#94a3b8"
-      })
-      .setOrigin(0.5, 0)
-      .setDepth(22);
-
-    this.settlementObjects.push(dim, frame, title, board, boardTitle, mvpText, redList, blueList, footer);
-    if (mvpBadge) {
-      this.settlementObjects.push(mvpBadge);
-    }
-  }
-
-  private addScoreCard(x: number, y: number, teamName: string, score: number, color: string) {
+  private drawAwardScorePill(x: number, y: number, teamName: string, score: number, color: string, delay: number) {
     const numericColor = Phaser.Display.Color.HexStringToColor(color).color;
-    const card = this.add.graphics().setDepth(22);
+    const container = this.add.container(x, y).setDepth(23);
+    const card = this.add.graphics();
     card.fillStyle(0x020617, 0.88);
-    card.lineStyle(2, numericColor, 0.82);
-    card.fillRoundedRect(x - 148, y, 296, 86, 16);
-    card.strokeRoundedRect(x - 148, y, 296, 86, 16);
+    card.lineStyle(2, numericColor, 0.78);
+    card.fillRoundedRect(-132, 0, 264, 66, 18);
+    card.strokeRoundedRect(-132, 0, 264, 66, 18);
     card.fillStyle(numericColor, 0.18);
-    card.fillRoundedRect(x - 128, y + 14, 256, 24, 12);
-    const title = this.add.text(x, y + 16, teamName, settlementText(color, "20px", "900")).setOrigin(0.5, 0).setDepth(23);
-    const scoreTextObject = this.add.text(x, y + 48, `${score} 分`, settlementText("#ffffff", "26px", "900")).setOrigin(0.5, 0).setDepth(23);
-    this.settlementObjects.push(card, title, scoreTextObject);
+    card.fillRoundedRect(-114, 10, 228, 18, 9);
+    const title = this.add.text(0, 8, teamName, settlementText(color, "17px", "900")).setOrigin(0.5, 0);
+    const scoreTextObject = this.add.text(0, 31, `${score} 分`, settlementText("#ffffff", "25px", "900")).setOrigin(0.5, 0);
+    container.add([card, title, scoreTextObject]);
+    this.trackSettlementObject(container, delay, -12);
+  }
+
+  private drawPodiumStage(ceremony: SettlementCeremony, width: number, delay: number) {
+    const baseY = 316;
+    const rail = this.add.graphics().setDepth(22);
+    rail.lineStyle(2, 0x334155, 0.75);
+    rail.lineBetween(242, baseY + 4, width - 242, baseY + 4);
+    rail.lineStyle(6, 0xfacc15, 0.16);
+    rail.lineBetween(298, baseY + 12, width - 298, baseY + 12);
+    this.trackSettlementObject(rail, delay, 18);
+
+    this.drawPodiumBlock(width / 2, 218, 176, 98, ceremony.winnerTone === "draw" ? "#f8fafc" : settlementTeamHex(ceremony.podium.center?.team ?? "red"), "1", delay + 40);
+    this.drawPodiumBlock(width / 2 - 176, 250, 150, 66, "#ff7a89", "2", delay + 70);
+    this.drawPodiumBlock(width / 2 + 176, 250, 150, 66, "#67c6ff", "3", delay + 100);
+    this.drawPodiumPlayer(ceremony.podium.center, width / 2, 218, true, delay + 180);
+    this.drawPodiumPlayer(ceremony.podium.left, width / 2 - 176, 250, false, delay + 230);
+    this.drawPodiumPlayer(ceremony.podium.right, width / 2 + 176, 250, false, delay + 260);
+  }
+
+  private drawPodiumBlock(x: number, top: number, width: number, height: number, color: string, place: string, delay: number) {
+    const numericColor = Phaser.Display.Color.HexStringToColor(color).color;
+    const block = this.add.graphics().setDepth(22);
+    block.fillStyle(0x111827, 0.96);
+    block.fillRoundedRect(x - width / 2, top, width, height, 16);
+    block.lineStyle(3, numericColor, 0.8);
+    block.strokeRoundedRect(x - width / 2, top, width, height, 16);
+    block.fillStyle(numericColor, 0.18);
+    block.fillRoundedRect(x - width / 2 + 12, top + 10, width - 24, 18, 9);
+    this.trackSettlementObject(block, delay, 26);
+
+    const placeText = this.add
+      .text(x, top + height - 38, place, {
+        fontFamily: FONT_STACK,
+        fontSize: height > 80 ? "46px" : "34px",
+        fontStyle: "900",
+        color: color
+      })
+      .setOrigin(0.5)
+      .setDepth(22)
+      .setAlpha(0.22);
+    this.settlementObjects.push(placeText);
+  }
+
+  private drawPodiumPlayer(slot: SettlementPodiumSlot | undefined, x: number, blockTop: number, isCenter: boolean, delay: number) {
+    if (!slot) {
+      const emptyText = this.add.text(x, blockTop + 20, "等待上榜", settlementText("#94a3b8", "14px", "800")).setOrigin(0.5).setDepth(24);
+      this.trackSettlementObject(emptyText, delay, 12);
+      return;
+    }
+
+    const accent = settlementTeamHex(slot.team);
+    const avatarY = blockTop - (isCenter ? 30 : 24);
+    const label = this.add
+      .text(x, blockTop - (isCenter ? 78 : 62), slot.label, settlementText(isCenter ? "#fef3c7" : accent, isCenter ? "19px" : "15px", "900"))
+      .setOrigin(0.5, 0)
+      .setDepth(24);
+    const badge = this.createStaticAvatarBadge(x, avatarY, slot.player.nickname, slot.team, isCenter ? 25 : 18, slot.player.avatarUrl).setDepth(24);
+    const name = this.add.text(x, blockTop + 12, compactPlayerName(slot.player.nickname, isCenter ? 5 : 4), settlementText("#ffffff", isCenter ? "20px" : "16px", "900")).setOrigin(0.5, 0).setDepth(24);
+    const stats = this.add
+      .text(x, blockTop + (isCenter ? 44 : 36), `${slot.player.score}分  命中${slot.player.hits}/${slot.player.shots}`, settlementText("#cbd5e1", isCenter ? "14px" : "12px", "800"))
+      .setOrigin(0.5, 0)
+      .setDepth(24);
+
+    this.trackSettlementObject(label, delay, 10);
+    this.trackSettlementObject(badge, delay + 40, 16, 0.72);
+    this.trackSettlementObject(name, delay + 70, 12);
+    this.trackSettlementObject(stats, delay + 90, 12);
+  }
+
+  private drawContributionBoard(board: SettlementBoard, x: number, y: number, width: number, height: number, delay: number) {
+    const accent = settlementTeamHex(board.team);
+    const accentColor = Phaser.Display.Color.HexStringToColor(accent).color;
+    const panel = this.add.graphics().setDepth(23);
+    panel.fillStyle(0x08111f, 0.94);
+    panel.fillRoundedRect(x, y, width, height, 18);
+    panel.lineStyle(2, accentColor, 0.56);
+    panel.strokeRoundedRect(x, y, width, height, 18);
+    panel.fillStyle(accentColor, 0.14);
+    panel.fillRoundedRect(x + 14, y + 12, width - 28, 22, 11);
+    this.trackSettlementObject(panel, delay, 20);
+
+    const title = this.add.text(x + 24, y + 13, board.title, settlementText(accent, "15px", "900")).setOrigin(0, 0).setDepth(24);
+    this.trackSettlementObject(title, delay + 30, 14);
+
+    if (!board.rows.length) {
+      const empty = this.add.text(x + width / 2, y + 64, "等待贡献上榜", settlementText("#94a3b8", "15px", "800")).setOrigin(0.5).setDepth(24);
+      this.trackSettlementObject(empty, delay + 60, 12);
+      return;
+    }
+
+    board.rows.forEach((row, index) => {
+      const rowY = y + 43 + index * 14;
+      const rowDelay = delay + 70 + index * 36;
+      const rankColor = index === 0 ? 0xfacc15 : index === 1 ? 0xcbd5e1 : index === 2 ? 0xf59e0b : accentColor;
+      const rank = this.add.circle(x + 24, rowY + 6, 7, rankColor, 0.92).setDepth(24);
+      const rankText = this.add
+        .text(x + 24, rowY + 6, String(row.rank), {
+          fontFamily: FONT_STACK,
+          fontSize: "10px",
+          fontStyle: "900",
+          color: "#020617"
+        })
+        .setOrigin(0.5)
+        .setDepth(25);
+      const avatar = this.createStaticAvatarBadge(x + 48, rowY + 6, row.player.nickname, row.player.team, 7, row.player.avatarUrl).setDepth(24);
+      const name = this.add.text(x + 64, rowY - 1, compactPlayerName(row.player.nickname, 5), settlementText("#f8fafc", "12px", "900")).setOrigin(0, 0).setDepth(24);
+      const score = this.add.text(x + width - 122, rowY - 1, `${row.player.score}分`, settlementText("#fef3c7", "12px", "900")).setOrigin(0, 0).setDepth(24);
+      const hit = this.add.text(x + width - 66, rowY - 1, `命中${row.player.hits}`, settlementText("#cbd5e1", "12px", "800")).setOrigin(0, 0).setDepth(24);
+      [rank, rankText, avatar, name, score, hit].forEach((object, offset) => this.trackSettlementObject(object, rowDelay + offset * 8, 8, object === avatar ? 0.82 : undefined));
+    });
+  }
+
+  private drawStatChips(chips: SettlementStatChip[], width: number, y: number, delay: number) {
+    const chipWidth = 160;
+    const gap = 16;
+    const startX = (width - chipWidth * chips.length - gap * (chips.length - 1)) / 2;
+    chips.forEach((chip, index) => {
+      const x = startX + index * (chipWidth + gap);
+      const container = this.add.container(x, y).setDepth(24);
+      const bg = this.add.graphics();
+      bg.fillStyle(0x020617, 0.88);
+      bg.lineStyle(1, 0x334155, 0.9);
+      bg.fillRoundedRect(0, 0, chipWidth, 44, 15);
+      bg.strokeRoundedRect(0, 0, chipWidth, 44, 15);
+      const label = this.add.text(18, 7, chip.label, settlementText("#94a3b8", "12px", "800")).setOrigin(0, 0);
+      const value = this.add.text(18, 21, chip.value, settlementText("#ffffff", "16px", "900")).setOrigin(0, 0);
+      container.add([bg, label, value]);
+      this.trackSettlementObject(container, delay + index * 45, 12);
+    });
+  }
+
+  private addSettlementConfetti(ceremony: SettlementCeremony, width: number) {
+    const accent = Phaser.Display.Color.HexStringToColor(settlementToneHex(ceremony.winnerTone)).color;
+    const colors = [accent, 0xfacc15, 0x38bdf8, 0xff7a89, 0xf8fafc];
+    for (let index = 0; index < 26; index += 1) {
+      const x = 84 + ((index * 71) % (width - 168));
+      const y = 42 + ((index * 37) % 118);
+      const confetti = this.add
+        .rectangle(x, y, 4 + (index % 3) * 2, 10 + (index % 2) * 4, colors[index % colors.length], 0.78)
+        .setDepth(26)
+        .setAngle((index * 23) % 180);
+      this.trackSettlementObject(confetti, 260 + index * 14, -18, 0.4);
+      this.tweens.add({
+        targets: confetti,
+        y: y + 26 + (index % 4) * 6,
+        angle: confetti.angle + 88,
+        alpha: { from: 0.32, to: 0.88 },
+        duration: 1700 + index * 18,
+        delay: 500 + index * 28,
+        ease: "Sine.easeInOut",
+        yoyo: true,
+        repeat: -1
+      });
+    }
+  }
+
+  private trackSettlementObject<T extends Phaser.GameObjects.GameObject>(object: T, delay?: number, yOffset = 14, scaleFrom?: number) {
+    this.settlementObjects.push(object);
+    if (delay !== undefined) {
+      this.animateSettlementObject(object, delay, yOffset, scaleFrom);
+    }
+    return object;
+  }
+
+  private animateSettlementObject(object: Phaser.GameObjects.GameObject, delay: number, yOffset: number, scaleFrom?: number) {
+    const target = object as Phaser.GameObjects.GameObject & {
+      alpha?: number;
+      y?: number;
+      scale?: number;
+      setAlpha?: (alpha: number) => unknown;
+      setY?: (y: number) => unknown;
+      setScale?: (scale: number) => unknown;
+    };
+    const baseY = typeof target.y === "number" ? target.y : undefined;
+    const baseScale = typeof target.scale === "number" ? target.scale : 1;
+    target.setAlpha?.(0);
+    if (baseY !== undefined) {
+      target.setY?.(baseY + yOffset);
+    }
+    if (scaleFrom !== undefined) {
+      target.setScale?.(scaleFrom);
+    }
+
+    const tweenConfig: Phaser.Types.Tweens.TweenBuilderConfig = {
+      targets: object,
+      alpha: 1,
+      delay,
+      duration: 520,
+      ease: "Cubic.easeOut"
+    };
+    if (baseY !== undefined) {
+      tweenConfig.y = baseY;
+    }
+    if (scaleFrom !== undefined) {
+      tweenConfig.scale = baseScale;
+    }
+    this.tweens.add(tweenConfig);
   }
 
   private clearSettlement() {
     for (const object of this.settlementObjects) {
+      this.tweens.killTweensOf(object);
       object.destroy();
     }
     this.settlementObjects = [];
@@ -1826,6 +1922,22 @@ function formatLeaderboard(entries: LeaderboardEntry[]) {
 function compactNickname(nickname: string) {
   const chars = Array.from(nickname);
   return chars.length > 2 ? `${chars.slice(0, 2).join("")}…` : nickname;
+}
+
+function compactPlayerName(nickname: string, maxLength: number) {
+  const chars = Array.from(nickname);
+  return chars.length > maxLength ? `${chars.slice(0, maxLength).join("")}…` : nickname;
+}
+
+function settlementTeamHex(team: Team) {
+  return team === "red" ? "#ff7a89" : "#67c6ff";
+}
+
+function settlementToneHex(tone: Team | "draw") {
+  if (tone === "draw") {
+    return "#f8fafc";
+  }
+  return settlementTeamHex(tone);
 }
 
 function formatMvp(entry?: LeaderboardEntry) {
