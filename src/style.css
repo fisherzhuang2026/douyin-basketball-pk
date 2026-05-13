@@ -66,6 +66,11 @@ select:focus {
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
 }
 
+input[type="range"] {
+  accent-color: #38bdf8;
+  cursor: pointer;
+}
+
 label {
   display: grid;
   gap: 7px;
@@ -249,6 +254,53 @@ h2 {
   color: #e0f2fe;
   font-size: 15px;
   font-weight: 900;
+}
+
+.sound-control {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(250, 204, 21, 0.26);
+  border-radius: 16px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(250, 204, 21, 0.16), transparent 34%),
+    radial-gradient(circle at 92% 24%, rgba(56, 189, 248, 0.14), transparent 30%),
+    rgba(15, 23, 42, 0.58);
+}
+
+.sound-control-head,
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sound-control-head span,
+.switch-row span {
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.sound-control-head strong {
+  border-radius: 999px;
+  padding: 4px 9px;
+  color: #fff7ed;
+  background: rgba(245, 158, 11, 0.2);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.switch-row {
+  grid-template-columns: auto 1fr;
+  justify-content: start;
+}
+
+.switch-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: #f59e0b;
 }
 
 .actions {

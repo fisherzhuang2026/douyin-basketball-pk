@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import {
   createMatch,
   finishMatch,
@@ -15,6 +15,8 @@ import GameCanvas from "./client/GameCanvas.vue";
 import HostPanel from "./client/HostPanel.vue";
 import SimulatorPanel from "./client/SimulatorPanel.vue";
 import { buildArenaCallout, getArenaPhase } from "./client/arenaPresentation";
+import { createAudioEngine } from "./client/audioEngine";
+import { getJoinCueId, getSettlementCueId, getShotCueId } from "./client/audioCues";
 import { createDemoAvatarUrl } from "./client/demoAvatars";
 import { formatInteractionFeedback } from "./client/feedback";
 import { PLAY_SUBTITLE, PLAY_TITLE } from "./client/presentation";
@@ -35,9 +37,13 @@ const previousSnapshot = ref<MatchSnapshot>();
 const lastShot = ref<ShotEvent>();
 const lastJoinedMember = ref<JoinedMemberEvent>();
 const recentShots = ref<ShotEvent[]>([]);
+const audioEnabled = ref(true);
+const audioVolume = ref(0.36);
 const activity = ref<string[]>(["等待创建对局"]);
 const loading = ref(false);
 const error = ref("");
+const lastSettlementSoundMatchId = ref("");
+const audioEngine = createAudioEngine({ enabled: audioEnabled.value, volume: audioVolume.value });
 let socket: WebSocket | undefined;
 let autoSettleTimer: number | undefined;
 
@@ -50,6 +56,9 @@ const pageTitle = computed(() => (snapshot.value?.status === "finished" ? "本�
 const arenaPhase = computed(() => getArenaPhase(snapshot.value?.status, snapshot.value?.startedAt, snapshot.value?.durationSeconds));
 const arenaCallout = computed(() => buildArenaCallout(previousSnapshot.value, snapshot.value, recentShots.value));
 
+watch(audioEnabled, (enabled) => audioEngine.setEnabled(enabled), { immediate: true });
+watch(audioVolume, (volume) => audioEngine.setVolume(volume), { immediate: true });
+
 onMounted(() => {
   connectSocket();
   autoSettleTimer = window.setInterval(() => {
@@ -59,12 +68,14 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   socket?.close();
+  audioEngine.dispose();
   if (autoSettleTimer) {
     window.clearInterval(autoSettleTimer);
   }
 });
 
 async function handleCreate() {
+  unlockAudio();
   await run(async () => {
     const match = await createMatch({ ...config.value });
     matchId.value = match.id;
@@ -76,6 +87,7 @@ async function handleCreate() {
 
 async function handleStart() {
   if (!matchId.value) return;
+  unlockAudio();
   await run(async () => {
     const match = await startMatch(matchId.value);
     applySnapshot(toSnapshot(match));
@@ -85,6 +97,7 @@ async function handleStart() {
 
 async function handleFinish() {
   if (!matchId.value) return;
+  unlockAudio();
   await run(async () => {
     const match = await finishMatch(matchId.value);
     applySnapshot(toSnapshot(match));
@@ -94,6 +107,7 @@ async function handleFinish() {
 
 async function handleComment(payload: { userId: string; nickname: string; avatarUrl?: string; content: string }) {
   if (!matchId.value) return;
+  unlockAudio();
   await run(async () => {
     await simulateComment({ matchId: matchId.value, ...payload });
     await refreshMatch();
@@ -102,6 +116,7 @@ async function handleComment(payload: { userId: string; nickname: string; avatar
 
 async function handleLike(payload: { userId: string }) {
   if (!matchId.value) return;
+  unlockAudio();
   await run(async () => {
     const result = await simulateLike({ matchId: matchId.value, userId: payload.userId });
     if (result.event) {
@@ -115,6 +130,7 @@ async function handleLike(payload: { userId: string }) {
 
 async function handleGift(payload: { userId: string; giftKey: string }) {
   if (!matchId.value) return;
+  unlockAudio();
   await run(async () => {
     const result = await simulateGift({ matchId: matchId.value, userId: payload.userId, giftKey: payload.giftKey });
     if (result.event) {
@@ -127,6 +143,8 @@ async function handleGift(payload: { userId: string; giftKey: string }) {
 }
 
 async function handleBurst() {
+  if (!matchId.value) return;
+  unlockAudio();
   const users = [
     { userId: "u1", nickname: "阿强", avatarUrl: createDemoAvatarUrl("阿强", 0), content: config.value.redKeyword },
     { userId: "u2", nickname: "小鱼", avatarUrl: createDemoAvatarUrl("小鱼", 1), content: config.value.blueKeyword },
@@ -191,18 +209,39 @@ function showFeedback(message?: string) {
 }
 
 function applySnapshot(next: MatchSnapshot) {
+  const wasFinished = snapshot.value?.status === "finished";
   previousSnapshot.value = snapshot.value;
   snapshot.value = next;
   if (next.recentEvents.length) {
     recentShots.value = next.recentEvents.slice(-8);
   }
+  if (next.status !== "finished") {
+    lastSettlementSoundMatchId.value = "";
+  }
+  if (next.status === "finished" && !wasFinished) {
+    playSettlementCue(next);
+  }
 }
 
 function recordShot(shot: ShotEvent) {
-  if (recentShots.value.at(-1)?.id !== shot.id) {
+  const isNewShot = recentShots.value.at(-1)?.id !== shot.id;
+  if (isNewShot) {
     recentShots.value = [...recentShots.value, shot].slice(-8);
+    void audioEngine.play(getShotCueId(shot));
   }
   lastShot.value = shot;
+}
+
+function unlockAudio() {
+  void audioEngine.unlock();
+}
+
+function playSettlementCue(match: MatchSnapshot) {
+  if (lastSettlementSoundMatchId.value === match.id) {
+    return;
+  }
+  lastSettlementSoundMatchId.value = match.id;
+  void audioEngine.play(getSettlementCueId(match));
 }
 
 function connectSocket() {
@@ -221,6 +260,7 @@ function connectSocket() {
     if (message.type === "member.joined") {
       const member = message.payload as JoinedMemberEvent;
       lastJoinedMember.value = { ...member };
+      void audioEngine.play(getJoinCueId(member));
       activity.value.unshift(`${member.nickname} 加入${member.team === "red" ? "红队" : "蓝队"}`);
     }
     activity.value = activity.value.slice(0, 8);
@@ -242,7 +282,16 @@ function connectSocket() {
     </section>
 
     <aside class="side">
-      <HostPanel v-model="config" :disabled="loading" :status="statusLabel" @create="handleCreate" @start="handleStart" @finish="handleFinish" />
+      <HostPanel
+        v-model="config"
+        v-model:audio-enabled="audioEnabled"
+        v-model:audio-volume="audioVolume"
+        :disabled="loading"
+        :status="statusLabel"
+        @create="handleCreate"
+        @start="handleStart"
+        @finish="handleFinish"
+      />
       <SimulatorPanel
         :disabled="disabled"
         :red-keyword="config.redKeyword"

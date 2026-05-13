@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { CreateMatchPayload } from "./api";
 
 const model = defineModel<CreateMatchPayload>({ required: true });
+const audioEnabled = defineModel<boolean>("audioEnabled", { default: true });
+const audioVolume = defineModel<number>("audioVolume", { default: 0.36 });
 
 defineProps<{
   disabled?: boolean;
@@ -23,6 +26,8 @@ const durations = [
   { label: "25 分钟", value: 1500 },
   { label: "30 分钟", value: 1800 }
 ];
+
+const volumePercent = computed(() => Math.round(audioVolume.value * 100));
 </script>
 
 <template>
@@ -69,6 +74,21 @@ const durations = [
     <div class="readonly-rule">
       <span>合规说明</span>
       <strong>主播不可配置命中率；礼物只按官方档位触发固定得分投篮。</strong>
+    </div>
+
+    <div class="sound-control">
+      <div class="sound-control-head">
+        <span>现场音效</span>
+        <strong>{{ audioEnabled ? "已开启" : "已关闭" }}</strong>
+      </div>
+      <label class="switch-row">
+        <input v-model="audioEnabled" type="checkbox" />
+        <span>入队、投篮、进球、结算播放反馈音</span>
+      </label>
+      <label>
+        音量 {{ volumePercent }}%
+        <input v-model.number="audioVolume" type="range" min="0" max="1" step="0.05" :disabled="!audioEnabled" />
+      </label>
     </div>
 
     <div class="actions">
