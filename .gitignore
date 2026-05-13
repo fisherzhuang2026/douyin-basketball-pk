@@ -1,0 +1,27 @@
+node_modules
+dist
+.env
+.env.local
+*.log
+coverage
+.vite
+__pycache__/
+*.pyc
+
+# Runtime and local artifacts
+logs/
+*.local
+
+# HyperFrames generated media and browser profiles
+hyperframes/**/node_modules/
+hyperframes/**/.tmp/
+hyperframes/**/renders/
+hyperframes/**/assets/live-recording/
+hyperframes/**/assets/screens/
+hyperframes/**/*.mp4
+hyperframes/**/*.webm
+hyperframes/**/*.wav
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #06101f;
+        font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      }
+
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        color: #f8fafc;
+        background:
+          radial-gradient(circle at 16% 10%, rgba(255, 90, 107, 0.22), transparent 30%),
+          radial-gradient(circle at 84% 16%, rgba(14, 165, 233, 0.28), transparent 34%),
+          linear-gradient(135deg, #050914 0%, #071222 54%, #0b1d34 100%);
+      }
+
+      .grid {
+        position: absolute;
+        inset: 0;
+        opacity: 0.28;
+        background-image:
+          linear-gradient(rgba(56, 189, 248, 0.16) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 90, 107, 0.1) 1px, transparent 1px);
+        background-size: 92px 92px;
+        transform: skewX(-8deg) scale(1.12);
+      }
+
+      .title-bar {
+        position: absolute;
+        top: 28px;
+        left: 70px;
+        right: 70px;
+        z-index: 30;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 4px;
+      }
+
+      .brand {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .brand span {
+        color: #facc15;
+        font-size: 22px;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+      }
+
+      .brand h1 {
+        font-size: 40px;
+        line-height: 1;
+        font-weight: 900;
+        text-shadow: 0 0 18px rgba(14, 165, 233, 0.36);
+      }
+
+      .review-pill {
+        padding: 14px 22px;
+        border: 1px solid rgba(56, 189, 248, 0.68);
+        border-radius: 999px;
+        color: #dff7ff;
+        font-size: 22px;
+        font-weight: 800;
+        background: rgba(2, 6, 23, 0.72);
+        box-shadow: 0 0 24px rgba(14, 165, 233, 0.22);
+      }
+
+      .screen-wrap {
+        position: absolute;
+        left: 72px;
+        top: 126px;
+        width: 1776px;
+        height: 900px;
+        z-index: 5;
+        border: 2px solid rgba(56, 189, 248, 0.58);
+        border-radius: 30px;
+        overflow: hidden;
+        background: rgba(2, 6, 23, 0.66);
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.44), 0 0 50px rgba(14, 165, 233, 0.2);
+      }
+
+      .shot {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform-origin: center center;
+      }
+
+      .caption {
+        position: absolute;
+        left: 118px;
+        bottom: 70px;
+        z-index: 40;
+        width: 960px;
+        padding: 24px 30px;
+        border: 1px solid rgba(226, 232, 240, 0.22);
+        border-left: 8px solid #facc15;
+        border-radius: 22px;
+        background: rgba(2, 6, 23, 0.82);
+        box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
+        backdrop-filter: blur(10px);
+      }
+
+      .caption strong {
+        display: block;
+        margin-bottom: 8px;
+        color: #facc15;
+        font-size: 30px;
+        font-weight: 900;
+      }
+
+      .caption p {
+        color: #e0f2fe;
+        font-size: 25px;
+        line-height: 1.42;
+        font-weight: 700;
+      }
+
+      .tag-row {
+        position: absolute;
+        right: 120px;
+        bottom: 84px;
+        z-index: 41;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .tag-row span {
+        min-width: 360px;
+        padding: 14px 18px;
+        border-radius: 16px;
+        color: #f8fafc;
+        font-size: 22px;
+        font-weight: 900;
+        background: linear-gradient(90deg, rgba(255, 90, 107, 0.88), rgba(14, 165, 233, 0.82));
+        box-shadow: 0 0 28px rgba(14, 165, 233, 0.2);
+      }
+
+      .safe-note {
+        position: absolute;
+        right: 118px;
+        top: 150px;
+        z-index: 42;
+        width: 420px;
+        padding: 22px 24px;
+        border-radius: 24px;
+        border: 1px solid rgba(250, 204, 21, 0.46);
+        background: rgba(30, 20, 4, 0.78);
+        color: #fde68a;
+        font-size: 24px;
+        line-height: 1.42;
+        font-weight: 900;
+        box-shadow: 0 0 30px rgba(250, 204, 21, 0.14);
+      }
+
+      .pulse-line {
+        position: absolute;
+        left: 70px;
+        right: 70px;
+        top: 112px;
+        height: 4px;
+        z-index: 32;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #ff5a6b, #facc15, #0ea5e9);
+        box-shadow: 0 0 24px rgba(14, 165, 233, 0.42);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="64" data-width="1920" data-height="1080">
+      <div class="grid" data-layout-ignore></div>
+      <div class="title-bar">
+        <div class="brand">
+          <span>DY-BA 直播互动玩法</span>
+          <h1>Dou-BA 斗篮机：篮球投篮机双队 PK</h1>
+        </div>
+        <div class="review-pill">提案评估演示版</div>
+      </div>
+      <div class="pulse-line"></div>
+
+      <div class="screen-wrap" data-layout-allow-overflow>
+        <img id="shot-01" class="shot clip" data-start="0" data-duration="6" data-track-index="1" src="assets/screens/01-config.png" />
+        <img id="shot-02" class="shot clip" data-start="6" data-duration="8" data-track-index="1" src="assets/screens/02-created.png" />
+        <img id="shot-03" class="shot clip" data-start="14" data-duration="7" data-track-index="1" src="assets/screens/04-joined.png" />
+        <img id="shot-04" class="shot clip" data-start="21" data-duration="8" data-track-index="1" src="assets/screens/05-like-shot.png" />
+        <img id="shot-05" class="shot clip" data-start="29" data-duration="6" data-track-index="1" src="assets/screens/06-low-gift.png" />
+        <img id="shot-06" class="shot clip" data-start="35" data-duration="7" data-track-index="1" src="assets/screens/07-mid-gift.png" />
+        <img id="shot-07" class="shot clip" data-start="42" data-duration="10" data-track-index="1" src="assets/screens/08-high-gift.png" />
+        <img id="shot-08" class="shot clip" data-start="52" data-duration="10" data-track-index="1" src="assets/screens/09-settlement.png" />
+        <img id="shot-09" class="shot clip" data-start="62" data-duration="2" data-track-index="1" src="assets/screens/09-settlement.png" />
+      </div>
+
+      <div id="cap-01" class="caption clip" data-start="0" data-duration="6" data-track-index="2">
+        <strong>玩法定位</strong>
+        <p>直播间观众分红蓝两队，用弹幕、点赞和官方小玩法礼物触发投篮。</p>
+      </div>
+      <div id="cap-02" class="caption clip" data-start="6" data-duration="8" data-track-index="2">
+        <strong>主播配置</strong>
+        <p>主播只配置对局时长、队伍名称和入队口令；点赞规则固定为 30% 命中率，命中 +1 分。</p>
+      </div>
+      <div id="cap-03" class="caption clip" data-start="14" data-duration="7" data-track-index="2">
+        <strong>观众入队</strong>
+        <p>观众发送红队或蓝队口令加入阵营，本局锁定队伍，下一局重新选择。</p>
+      </div>
+      <div id="cap-04" class="caption clip" data-start="21" data-duration="8" data-track-index="2">
+        <strong>点赞投篮</strong>
+        <p>点赞触发普通投篮，系统固定按 30% 命中率判定，命中后实时加 1 分。</p>
+      </div>
+      <div id="cap-05" class="caption clip" data-start="29" data-duration="13" data-track-index="2">
+        <strong>礼物投篮</strong>
+        <p>低价礼物 1 分，中价礼物 2 分，高价礼物 3 分，不同礼物展示不同轨迹与特效。</p>
+      </div>
+      <div id="cap-06" class="caption clip" data-start="42" data-duration="10" data-track-index="2">
+        <strong>高级礼物氛围</strong>
+        <p>高级礼物强化篮球样式、粒子爆发、篮筐反馈和镜头冲击，满足礼物 UI 特效展示。</p>
+      </div>
+      <div id="cap-07" class="caption clip" data-start="52" data-duration="10" data-track-index="2">
+        <strong>结算结果</strong>
+        <p>比赛结束展示胜负、最终比分、MVP、每队贡献榜前五，便于赛后复盘。</p>
+      </div>
+      <div id="cap-08" class="caption clip" data-start="62" data-duration="2" data-track-index="2">
+        <strong>合规边界</strong>
+        <p>仅做互动投篮和团队 PK 计分，不涉及抽奖、返利、竞猜或现金收益。</p>
+      </div>
+
+      <div id="tags-01" class="tag-row clip" data-start="6" data-duration="15" data-track-index="3">
+        <span>支持 3-30 分钟对局</span>
+        <span>入队后本局不可换队</span>
+        <span>点赞固定 30% 命中率</span>
+      </div>
+      <div id="tags-02" class="tag-row clip" data-start="29" data-duration="23" data-track-index="3">
+        <span>官方小玩法礼物</span>
+        <span>低 / 中 / 高：+1 / +2 / +3</span>
+        <span>礼物特效 1.6s / 3s / 4s</span>
+      </div>
+      <div id="safe-note" class="safe-note clip" data-start="58" data-duration="6" data-track-index="4">
+        合规说明：不做抽奖、赌博、返利、现金奖励表达，仅展示互动计分结果。
+      </div>
+
+      <audio id="narration" data-start="0" data-duration="64" data-track-index="10" data-volume="1" src="assets/narration.wav"></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const sceneIds = ["shot-01", "shot-02", "shot-03", "shot-04", "shot-05", "shot-06", "shot-07", "shot-08", "shot-09"];
+      const starts = [0, 6, 14, 21, 29, 35, 42, 52, 62];
+      const durations = [6, 8, 7, 8, 6, 7, 10, 10, 2];
+
+      sceneIds.forEach((id, index) => {
+        const start = starts[index];
+        const duration = durations[index];
+        tl.fromTo(`#${id}`, { opacity: 0, scale: 1.025 }, { opacity: 1, scale: 1, duration: 0.35, ease: "power2.out" }, start);
+        tl.to(`#${id}`, { scale: index === 1 ? 1.065 : 1.04, duration, ease: "none" }, start);
+        tl.to(`#${id}`, { opacity: 0, duration: 0.3, ease: "power1.in" }, start + duration - 0.3);
+      });
+
+      for (let index = 1; index <= 8; index += 1) {
+        const id = `#cap-${String(index).padStart(2, "0")}`;
+        const start = [0, 6, 14, 21, 29, 42, 52, 62][index - 1];
+        tl.fromTo(id, { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.36, ease: "power3.out" }, start + 0.2);
+      }
+
+      tl.fromTo("#tags-01 span", { opacity: 0, x: 34 }, { opacity: 1, x: 0, duration: 0.42, stagger: 0.12, ease: "power2.out" }, 6.5);
+      tl.fromTo("#tags-02 span", { opacity: 0, x: 34 }, { opacity: 1, x: 0, duration: 0.42, stagger: 0.12, ease: "power2.out" }, 29.5);
+      tl.fromTo("#safe-note", { opacity: 0, y: -18 }, { opacity: 1, y: 0, duration: 0.36, ease: "power2.out" }, 58.2);
+      tl.to(".pulse-line", { backgroundPosition: "520px 0", duration: 64, ease: "none" }, 0);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
