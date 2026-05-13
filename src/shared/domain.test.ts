@@ -198,12 +198,14 @@ describe("domain rules", () => {
   it("settles a running match after its configured duration", () => {
     const running = startMatch(createDefaultMatch({ durationSeconds: 180 }), new Date("2026-05-08T12:00:00.000Z"));
 
-    const stillRunning = settleExpiredMatch(running, new Date("2026-05-08T12:02:59.000Z"));
-    const finished = settleExpiredMatch(running, new Date("2026-05-08T12:03:00.000Z"));
+    const stillOpening = settleExpiredMatch(running, new Date("2026-05-08T12:00:03.400Z"));
+    const stillRunning = settleExpiredMatch(running, new Date("2026-05-08T12:03:03.499Z"));
+    const finished = settleExpiredMatch(running, new Date("2026-05-08T12:03:03.500Z"));
 
+    expect(stillOpening.status).toBe("running");
     expect(stillRunning.status).toBe("running");
     expect(finished.status).toBe("finished");
-    expect(finished.endedAt?.toISOString()).toBe("2026-05-08T12:03:00.000Z");
+    expect(finished.endedAt?.toISOString()).toBe("2026-05-08T12:03:03.500Z");
     expect(finished.winner).toBe("draw");
   });
 });

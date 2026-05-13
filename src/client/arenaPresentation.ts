@@ -1,4 +1,5 @@
 import type { LeaderboardEntry, MatchSnapshot, MatchStatus, ShotEvent, Team } from "./types";
+import { OPENING_COUNTDOWN_MS, getPlayableElapsedMs } from "../shared/timing";
 
 export type ArenaPhase = "idle" | "opening" | "live" | "clutch" | "settlement";
 
@@ -16,7 +17,6 @@ export interface SettlementStats {
   bestStreakLabel: string;
 }
 
-const OPENING_DURATION_MS = 3500;
 const CLUTCH_DURATION_MS = 30_000;
 
 export function getArenaPhase(status?: MatchStatus, startedAt?: string, durationSeconds = 300, now = Date.now()): ArenaPhase {
@@ -33,11 +33,11 @@ export function getArenaPhase(status?: MatchStatus, startedAt?: string, duration
   }
 
   const elapsedMs = Math.max(0, now - startedMs);
-  if (elapsedMs < OPENING_DURATION_MS) {
+  if (elapsedMs < OPENING_COUNTDOWN_MS) {
     return "opening";
   }
 
-  const remainingMs = durationSeconds * 1000 - elapsedMs;
+  const remainingMs = durationSeconds * 1000 - getPlayableElapsedMs(startedMs, now);
   return remainingMs <= CLUTCH_DURATION_MS ? "clutch" : "live";
 }
 

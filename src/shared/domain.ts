@@ -1,4 +1,5 @@
 import { DEFAULT_GIFT_RULES, type GiftAnimationType } from "./gifts";
+import { isMatchDurationExpired } from "./timing";
 
 export type Team = "red" | "blue";
 export type MatchStatus = "draft" | "running" | "finished";
@@ -170,8 +171,7 @@ export function settleExpiredMatch(match: MatchState, now = new Date()): MatchSt
     return next;
   }
 
-  const elapsedMs = now.getTime() - next.startedAt.getTime();
-  if (elapsedMs < next.durationSeconds * 1000) {
+  if (!isMatchDurationExpired(next.durationSeconds, next.startedAt.getTime(), now.getTime())) {
     return next;
   }
 

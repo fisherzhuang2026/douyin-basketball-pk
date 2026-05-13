@@ -18,6 +18,7 @@ import { getAllGiftIconAssets } from "./giftIconAssets";
 import { PLAY_TITLE, formatShotStatus, getGiftEffectPresentation, type GiftEffectPresentation } from "./presentation";
 import { buildSettlementCeremony, type SettlementBoard, type SettlementCeremony, type SettlementPodiumSlot, type SettlementStatChip } from "./settlementPresentation";
 import { formatSeconds, getRemainingSeconds } from "./timer";
+import { OPENING_COUNTDOWN_MS } from "../shared/timing";
 
 const FONT_STACK = '"Microsoft YaHei", "PingFang SC", sans-serif';
 const HOOP_BASE_Y = 160;
@@ -725,7 +726,7 @@ export class BasketballScene extends Phaser.Scene {
     }
     const { width, height } = this.scale;
     const elapsed = Math.max(0, nowMs - Date.parse(this.snapshot.startedAt));
-    const remaining = Math.ceil(Math.max(0, 3500 - elapsed) / 1000);
+    const remaining = Math.ceil(Math.max(0, OPENING_COUNTDOWN_MS - elapsed) / 1000);
     const label = remaining > 0 ? `${remaining}` : "GO";
 
     const wash = this.add.rectangle(width / 2, height / 2, width, height, 0x020617, 0.48).setDepth(14);

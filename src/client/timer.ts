@@ -1,10 +1,12 @@
+import { getPlayableElapsedMs } from "../shared/timing";
+
 export function getRemainingSeconds(durationSeconds: number, startedAt: string, nowMs = Date.now()): number {
   const startedAtMs = Date.parse(startedAt);
   if (Number.isNaN(startedAtMs)) {
     return durationSeconds;
   }
 
-  const elapsedSeconds = Math.floor((nowMs - startedAtMs) / 1000);
+  const elapsedSeconds = Math.floor(getPlayableElapsedMs(startedAtMs, nowMs) / 1000);
   return Math.max(0, durationSeconds - elapsedSeconds);
 }
 

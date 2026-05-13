@@ -185,6 +185,15 @@ describe("Fastify app", () => {
     expect(startResponse.json().status).toBe("running");
 
     now = new Date("2026-05-08T13:03:00.000Z");
+    const beforeOpeningGraceResponse = await app.inject({
+      method: "GET",
+      url: `/api/matches/${created.id}`
+    });
+
+    expect(beforeOpeningGraceResponse.statusCode).toBe(200);
+    expect(beforeOpeningGraceResponse.json().status).toBe("running");
+
+    now = new Date("2026-05-08T13:03:03.500Z");
     const readResponse = await app.inject({
       method: "GET",
       url: `/api/matches/${created.id}`
@@ -195,6 +204,6 @@ describe("Fastify app", () => {
       status: "finished",
       winner: "draw"
     });
-    expect(readResponse.json().endedAt).toBe("2026-05-08T13:03:00.000Z");
+    expect(readResponse.json().endedAt).toBe("2026-05-08T13:03:03.500Z");
   });
 });
