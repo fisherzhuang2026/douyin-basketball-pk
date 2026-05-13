@@ -25,6 +25,13 @@ export interface ShotEvent {
   createdAt: string;
 }
 
+export interface JoinedMemberEvent {
+  userId: string;
+  nickname: string;
+  avatarUrl?: string;
+  team: Team;
+}
+
 export interface MatchSnapshot {
   id: string;
   roomId: string;

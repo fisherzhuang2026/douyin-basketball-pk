@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { getArenaPhase, type ArenaCallout, type ArenaPhase } from "./arenaPresentation";
-import type { LeaderboardEntry, MatchSnapshot, ShotEvent, Team } from "./types";
+import type { JoinedMemberEvent, LeaderboardEntry, MatchSnapshot, ShotEvent, Team } from "./types";
 import {
   getBallRotation,
   getCourtOverlayLayout,
@@ -15,6 +15,7 @@ import {
   type ShotTrailLayer
 } from "./courtStyle";
 import { getAllGiftIconAssets } from "./giftIconAssets";
+import { buildJoinPresentation } from "./joinPresentation";
 import { PLAY_TITLE, formatShotStatus, getGiftEffectPresentation, type GiftEffectPresentation } from "./presentation";
 import { buildSettlementCeremony, type SettlementBoard, type SettlementCeremony, type SettlementPodiumSlot, type SettlementStatChip } from "./settlementPresentation";
 import { formatSeconds, getRemainingSeconds } from "./timer";
@@ -54,6 +55,7 @@ export class BasketballScene extends Phaser.Scene {
   private settlementObjects: Phaser.GameObjects.GameObject[] = [];
   private arenaPresentationObjects: Phaser.GameObjects.GameObject[] = [];
   private activeShotObjects: Phaser.GameObjects.GameObject[] = [];
+  private joinEffectObjects: Phaser.GameObjects.GameObject[] = [];
   private loadingAvatarKeys = new Set<string>();
   private marqueeConfigs = new Map<Phaser.GameObjects.Text, MarqueeConfig>();
   private shotRunId = 0;
@@ -246,6 +248,115 @@ export class BasketballScene extends Phaser.Scene {
         });
       }
     });
+  }
+
+  playJoinEffect(member: JoinedMemberEvent) {
+    if (!this.scene?.isActive()) {
+      return;
+    }
+
+    const presentation = buildJoinPresentation(member);
+    const { width } = this.scale;
+    const rail = getJoinRailLayout(member.team, width);
+    const startX = presentation.side === "left" ? -24 : width + 24;
+    const startY = 344;
+    const targetX = rail.x + rail.width / 2;
+    const targetY = rail.y + 46;
+
+    const flash = this.add.graphics().setDepth(9).setAlpha(1);
+    flash.fillStyle(presentation.accentColor, 0.12);
+    flash.fillRoundedRect(rail.x - 10, rail.y - 10, rail.width + 20, rail.height + 20, 28);
+    flash.lineStyle(5, presentation.accentColor, 0.82);
+    flash.strokeRoundedRect(rail.x - 10, rail.y - 10, rail.width + 20, rail.height + 20, 28);
+    this.trackJoinObject(flash);
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 1100,
+      ease: "Sine.easeOut",
+      onComplete: () => this.destroyJoinObject(flash)
+    });
+
+    const beam = this.add.graphics().setDepth(10);
+    beam.lineStyle(6, presentation.accentColor, 0.16);
+    beam.lineBetween(startX, startY, targetX, targetY);
+    beam.lineStyle(2, 0xffffff, 0.28);
+    beam.lineBetween(startX, startY, targetX, targetY);
+    this.trackJoinObject(beam);
+    this.tweens.add({
+      targets: beam,
+      alpha: 0,
+      duration: 780,
+      delay: 260,
+      ease: "Sine.easeOut",
+      onComplete: () => this.destroyJoinObject(beam)
+    });
+
+    const badge = this.createStaticAvatarBadge(startX, startY, member.nickname, member.team, 23, member.avatarUrl).setDepth(12).setAlpha(0).setScale(0.78);
+    const nameTag = this.add
+      .text(startX, startY + 32, member.nickname, {
+        fontFamily: FONT_STACK,
+        fontSize: "14px",
+        fontStyle: "900",
+        color: "#ffffff",
+        backgroundColor: member.team === "red" ? "rgba(127, 29, 29, 0.9)" : "rgba(12, 74, 110, 0.9)",
+        padding: { x: 8, y: 4 },
+        stroke: "#020617",
+        strokeThickness: 2
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(12)
+      .setAlpha(0);
+    this.trackJoinObject(badge);
+    this.trackJoinObject(nameTag);
+    this.tweens.add({
+      targets: [badge, nameTag],
+      x: targetX,
+      y: (target: Phaser.GameObjects.GameObject) => (target === nameTag ? targetY + 32 : targetY),
+      alpha: 1,
+      scale: 1,
+      duration: 520,
+      ease: "Back.easeOut",
+      onComplete: () => {
+        this.tweens.add({
+          targets: [badge, nameTag],
+          alpha: 0,
+          scale: 0.72,
+          delay: 520,
+          duration: 360,
+          ease: "Sine.easeIn",
+          onComplete: () => {
+            this.destroyJoinObject(badge);
+            this.destroyJoinObject(nameTag);
+          }
+        });
+      }
+    });
+
+    const callout = this.createJoinCallout(presentation.headline, presentation.teamLabel, presentation.accentColor, presentation.accentHex);
+    this.trackJoinObject(callout);
+    this.tweens.add({
+      targets: callout,
+      y: callout.y - 14,
+      alpha: 1,
+      scale: 1,
+      duration: 420,
+      ease: "Back.easeOut",
+      onComplete: () => {
+        this.tweens.add({
+          targets: callout,
+          y: callout.y - 18,
+          alpha: 0,
+          delay: 620,
+          duration: 360,
+          ease: "Sine.easeIn",
+          onComplete: () => this.destroyJoinObject(callout)
+        });
+      }
+    });
+
+    this.pulseJoinedRail(member.team);
+    this.spawnJoinParticles(targetX, targetY, presentation.accentColor);
   }
 
   private drawArcadeStage(width: number, height: number) {
@@ -668,6 +779,7 @@ export class BasketballScene extends Phaser.Scene {
     if (snapshot.status === "finished" && this.status) {
       const winnerName = snapshot.winner === "draw" ? "双方平局" : snapshot.winner === "red" ? snapshot.redTeamName : snapshot.blueTeamName;
       this.status.setText(snapshot.winner === "draw" ? "本局平局" : `${winnerName} 获胜`);
+      this.clearJoinObjects();
       this.renderAwardSettlement(snapshot);
     } else {
       this.clearSettlement();
@@ -1782,6 +1894,97 @@ export class BasketballScene extends Phaser.Scene {
     }
   }
 
+  private createJoinCallout(headline: string, teamLabel: string, accentColor: number, accentHex: string) {
+    const { width } = this.scale;
+    const container = this.add.container(width / 2, 240).setDepth(13).setAlpha(0).setScale(0.84);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x020617, 0.88);
+    bg.fillRoundedRect(-178, -34, 356, 68, 18);
+    bg.lineStyle(2, accentColor, 0.72);
+    bg.strokeRoundedRect(-178, -34, 356, 68, 18);
+    bg.fillStyle(accentColor, 0.2);
+    bg.fillRoundedRect(-158, -23, 86, 22, 11);
+    const label = this.add.text(-115, -22, teamLabel, settlementText(accentHex, "13px", "900")).setOrigin(0.5, 0);
+    const title = this.add
+      .text(0, 3, headline, {
+        fontFamily: FONT_STACK,
+        fontSize: "24px",
+        fontStyle: "900",
+        color: "#ffffff",
+        stroke: "#020617",
+        strokeThickness: 5
+      })
+      .setOrigin(0.5);
+    container.add([bg, label, title]);
+    return container;
+  }
+
+  private pulseJoinedRail(team: Team) {
+    const rail = team === "red" ? this.redRail : this.blueRail;
+    const label = team === "red" ? this.redTeamLabel : this.blueTeamLabel;
+    const targets = [rail?.member, rail?.keyword, rail?.top, label].filter((object): object is Phaser.GameObjects.Text => Boolean(object));
+    this.tweens.add({
+      targets,
+      scale: 1.12,
+      duration: 180,
+      ease: "Sine.easeOut",
+      yoyo: true,
+      onComplete: () => targets.forEach((target) => target.setScale(1))
+    });
+  }
+
+  private spawnJoinParticles(x: number, y: number, color: number) {
+    for (let index = 0; index < 18; index += 1) {
+      const angle = -Math.PI / 2 + (index - 8.5) * 0.18;
+      const distance = 38 + (index % 5) * 12;
+      const particle = this.add.circle(x, y, 2.6 + (index % 3) * 0.8, color, 0.92).setDepth(11);
+      this.trackJoinObject(particle);
+      this.tweens.add({
+        targets: particle,
+        x: x + Math.cos(angle) * distance,
+        y: y + Math.sin(angle) * distance,
+        alpha: 0,
+        scale: 0.2,
+        duration: 760 + (index % 4) * 70,
+        ease: "Cubic.easeOut",
+        onComplete: () => this.destroyJoinObject(particle)
+      });
+    }
+
+    for (let index = 0; index < 5; index += 1) {
+      const ribbon = this.add.rectangle(x, y + 6, 28, 4, color, 0.72).setDepth(11).setAngle(index * 18 - 36);
+      this.trackJoinObject(ribbon);
+      this.tweens.add({
+        targets: ribbon,
+        x: x + (index - 2) * 34,
+        y: y + 28 + index * 6,
+        alpha: 0,
+        duration: 820,
+        ease: "Sine.easeOut",
+        onComplete: () => this.destroyJoinObject(ribbon)
+      });
+    }
+  }
+
+  private trackJoinObject<T extends Phaser.GameObjects.GameObject>(object: T) {
+    this.joinEffectObjects.push(object);
+    return object;
+  }
+
+  private destroyJoinObject(object: Phaser.GameObjects.GameObject) {
+    this.tweens.killTweensOf(object);
+    object.destroy();
+    this.joinEffectObjects = this.joinEffectObjects.filter((current) => current !== object);
+  }
+
+  private clearJoinObjects() {
+    for (const object of this.joinEffectObjects) {
+      this.tweens.killTweensOf(object);
+      object.destroy();
+    }
+    this.joinEffectObjects = [];
+  }
+
   private clearShotObjects() {
     for (const object of this.activeShotObjects) {
       this.tweens.killTweensOf(object);
@@ -1939,6 +2142,14 @@ function settlementToneHex(tone: Team | "draw") {
     return "#f8fafc";
   }
   return settlementTeamHex(tone);
+}
+
+function getJoinRailLayout(team: Team, sceneWidth: number) {
+  if (team === "red") {
+    return { x: 28, y: 116, width: 176, height: 250 };
+  }
+
+  return { x: sceneWidth - 204, y: 116, width: 176, height: 250 };
 }
 
 function formatMvp(entry?: LeaderboardEntry) {

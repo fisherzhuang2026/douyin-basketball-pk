@@ -3,11 +3,12 @@ import Phaser from "phaser";
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { ArenaCallout, ArenaPhase } from "./arenaPresentation";
 import { BasketballScene } from "./gameScene";
-import type { MatchSnapshot, ShotEvent } from "./types";
+import type { JoinedMemberEvent, MatchSnapshot, ShotEvent } from "./types";
 
 const props = defineProps<{
   snapshot?: MatchSnapshot;
   lastShot?: ShotEvent;
+  lastJoinedMember?: JoinedMemberEvent;
   phase?: ArenaPhase;
   callout?: ArenaCallout;
 }>();
@@ -63,6 +64,15 @@ watch(
   (event) => {
     if (event) {
       scene?.playShot(event);
+    }
+  }
+);
+
+watch(
+  () => props.lastJoinedMember,
+  (member) => {
+    if (member) {
+      scene?.playJoinEffect(member);
     }
   }
 );

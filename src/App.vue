@@ -19,7 +19,7 @@ import { createDemoAvatarUrl } from "./client/demoAvatars";
 import { formatInteractionFeedback } from "./client/feedback";
 import { PLAY_SUBTITLE, PLAY_TITLE } from "./client/presentation";
 import { hasCountdownExpired } from "./client/timer";
-import type { MatchSnapshot, ShotEvent, SocketMessage } from "./client/types";
+import type { JoinedMemberEvent, MatchSnapshot, ShotEvent, SocketMessage } from "./client/types";
 
 const config = ref<CreateMatchPayload>({
   durationSeconds: 300,
@@ -33,6 +33,7 @@ const matchId = ref("");
 const snapshot = ref<MatchSnapshot>();
 const previousSnapshot = ref<MatchSnapshot>();
 const lastShot = ref<ShotEvent>();
+const lastJoinedMember = ref<JoinedMemberEvent>();
 const recentShots = ref<ShotEvent[]>([]);
 const activity = ref<string[]>(["等待创建对局"]);
 const loading = ref(false);
@@ -218,7 +219,8 @@ function connectSocket() {
       activity.value.unshift(`${shot.nickname} ${shot.hit ? `命中 +${shot.score}` : "打铁"}`);
     }
     if (message.type === "member.joined") {
-      const member = message.payload as { nickname: string; team: "red" | "blue" };
+      const member = message.payload as JoinedMemberEvent;
+      lastJoinedMember.value = { ...member };
       activity.value.unshift(`${member.nickname} 加入${member.team === "red" ? "红队" : "蓝队"}`);
     }
     activity.value = activity.value.slice(0, 8);
@@ -236,7 +238,7 @@ function connectSocket() {
         </div>
         <strong>{{ statusLabel }}</strong>
       </div>
-      <GameCanvas :snapshot="snapshot" :last-shot="lastShot" :phase="arenaPhase" :callout="arenaCallout" />
+      <GameCanvas :snapshot="snapshot" :last-shot="lastShot" :last-joined-member="lastJoinedMember" :phase="arenaPhase" :callout="arenaCallout" />
     </section>
 
     <aside class="side">
