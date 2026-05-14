@@ -44,6 +44,8 @@ export interface ShotVisualStyle {
     glowRadius: number;
     seamWidth: number;
     highlightRadius: number;
+    shadowOffsetY: number;
+    specularCount: number;
   };
   hoop: {
     backboardWidth: number;
@@ -58,6 +60,9 @@ export interface ShotVisualStyle {
     sideRailCount: number;
     rimBeamSegmentCount: number;
     rimBeamCenterGap: number;
+    depthOffset: number;
+    supportArmCount: number;
+    rimExtrusionLayers: number;
   };
   hitEffect: {
     ringDuration: number;
@@ -98,6 +103,25 @@ export interface CourtOverlayLayout {
   };
 }
 
+export interface CourtDepthStyle {
+  vanishPoint: {
+    x: number;
+    y: number;
+  };
+  floor: {
+    centerX: number;
+    topY: number;
+    bottomY: number;
+    topWidth: number;
+    bottomWidth: number;
+    depthBandCount: number;
+    laneGlowCount: number;
+    sideRailWidth: number;
+    shadowAlpha: number;
+  };
+  horizonLightCount: number;
+}
+
 interface TrailInput {
   start: { x: number; y: number };
   control: { x: number; y: number };
@@ -134,10 +158,12 @@ export function getShotVisualStyle(team: Team): ShotVisualStyle {
       { name: "highlight", color: 0xffffff, width: 2, alpha: 0.9 }
     ],
     ball: {
-      radius: 28,
-      glowRadius: 42,
+      radius: 32,
+      glowRadius: 50,
       seamWidth: 3,
-      highlightRadius: 9
+      highlightRadius: 11,
+      shadowOffsetY: 12,
+      specularCount: 3
     },
     hoop: {
       backboardWidth: 216,
@@ -151,7 +177,10 @@ export function getShotVisualStyle(team: Team): ShotVisualStyle {
       cornerBracketCount: 4,
       sideRailCount: 2,
       rimBeamSegmentCount: 10,
-      rimBeamCenterGap: 38
+      rimBeamCenterGap: 38,
+      depthOffset: 16,
+      supportArmCount: 2,
+      rimExtrusionLayers: 4
     },
     hitEffect: {
       ringDuration: 1180,
@@ -159,6 +188,27 @@ export function getShotVisualStyle(team: Team): ShotVisualStyle {
       scoreDuration: 1240,
       shakeDuration: 260
     }
+  };
+}
+
+export function getCourtDepthStyle(width: number, height: number): CourtDepthStyle {
+  return {
+    vanishPoint: {
+      x: width / 2,
+      y: 62
+    },
+    floor: {
+      centerX: width / 2,
+      topY: 116,
+      bottomY: height - 92,
+      topWidth: width * 0.43,
+      bottomWidth: width * 0.72,
+      depthBandCount: 7,
+      laneGlowCount: 6,
+      sideRailWidth: 34,
+      shadowAlpha: 0.34
+    },
+    horizonLightCount: 9
   };
 }
 

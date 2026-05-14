@@ -3,6 +3,7 @@ import { getArenaPhase, type ArenaCallout, type ArenaPhase } from "./arenaPresen
 import type { JoinedMemberEvent, LeaderboardEntry, MatchSnapshot, ShotEvent, Team } from "./types";
 import {
   getBallRotation,
+  getCourtDepthStyle,
   getCourtOverlayLayout,
   getGiftBallSkin,
   getGiftEffectTiming,
@@ -361,22 +362,23 @@ export class BasketballScene extends Phaser.Scene {
 
   private drawArcadeStage(width: number, height: number) {
     const overlayLayout = getCourtOverlayLayout(width, height);
+    const depth = getCourtDepthStyle(width, height);
     const g = this.add.graphics();
     g.fillStyle(0x08111f, 1);
     g.fillRect(0, 0, width, height);
 
-    for (let index = 0; index < 9; index += 1) {
-      const x = 80 + index * 96;
-      g.lineStyle(1, index % 2 === 0 ? 0x17345a : 0x271f3f, 0.38);
-      g.lineBetween(x, 0, x - 120, height);
+    for (let index = 0; index < 12; index += 1) {
+      const x = 44 + index * 84;
+      g.lineStyle(1, index % 2 === 0 ? 0x17345a : 0x271f3f, 0.34);
+      g.lineBetween(x, 0, x - 134, height);
     }
 
-    g.fillStyle(0x0ea5e9, 0.1);
-    g.fillCircle(width * 0.18, 92, 118);
-    g.fillStyle(0xff3d55, 0.1);
-    g.fillCircle(width * 0.82, 92, 118);
+    g.fillStyle(0x0ea5e9, 0.12);
+    g.fillCircle(width * 0.18, 92, 136);
+    g.fillStyle(0xff3d55, 0.12);
+    g.fillCircle(width * 0.82, 92, 136);
     g.fillStyle(0xfacc15, 0.08);
-    g.fillCircle(width / 2, height - 48, 190);
+    g.fillCircle(width / 2, height - 42, 230);
 
     g.lineStyle(3, 0x38bdf8, 0.36);
     g.strokeRoundedRect(14, 14, width - 28, height - 28, 26);
@@ -407,23 +409,85 @@ export class BasketballScene extends Phaser.Scene {
       g.lineBetween(width - 32, y, width - 190, y - 28);
     }
 
-    g.fillStyle(0x0f172a, 0.88);
-    g.fillRoundedRect(206, 92, 548, 346, 28);
-    g.lineStyle(3, 0x38bdf8, 0.26);
-    g.strokeRoundedRect(206, 92, 548, 346, 28);
+    const floor = depth.floor;
+    const topLeft = { x: floor.centerX - floor.topWidth / 2, y: floor.topY };
+    const topRight = { x: floor.centerX + floor.topWidth / 2, y: floor.topY };
+    const bottomLeft = { x: floor.centerX - floor.bottomWidth / 2, y: floor.bottomY };
+    const bottomRight = { x: floor.centerX + floor.bottomWidth / 2, y: floor.bottomY };
+
+    g.fillStyle(0x020617, floor.shadowAlpha);
+    g.fillEllipse(floor.centerX, floor.bottomY + 18, floor.bottomWidth + 126, 64);
+    g.fillStyle(0x0f172a, 0.92);
+    g.beginPath();
+    g.moveTo(topLeft.x - 18, topLeft.y - 20);
+    g.lineTo(topRight.x + 18, topRight.y - 20);
+    g.lineTo(bottomRight.x + 46, bottomRight.y + 24);
+    g.lineTo(bottomLeft.x - 46, bottomLeft.y + 24);
+    g.closePath();
+    g.fillPath();
+    g.lineStyle(3, 0x38bdf8, 0.24);
+    g.strokePath();
 
     g.fillStyle(0x2b1d24, 1);
-    g.fillRoundedRect(242, 124, 476, 282, 18);
-    g.fillStyle(0x442a20, 0.9);
-    g.fillRoundedRect(264, 148, 432, 236, 16);
-    for (let index = 0; index < 10; index += 1) {
-      g.fillStyle(index % 2 === 0 ? 0x6d3b24 : 0x56301f, 0.24);
-      g.fillRect(264 + index * 43, 148, 23, 236);
+    g.beginPath();
+    g.moveTo(topLeft.x, topLeft.y);
+    g.lineTo(topRight.x, topRight.y);
+    g.lineTo(bottomRight.x, bottomRight.y);
+    g.lineTo(bottomLeft.x, bottomLeft.y);
+    g.closePath();
+    g.fillPath();
+
+    const railOffset = floor.sideRailWidth;
+    g.fillStyle(0xff5a6b, 0.12);
+    g.beginPath();
+    g.moveTo(topLeft.x, topLeft.y);
+    g.lineTo(topLeft.x - railOffset, topLeft.y + 8);
+    g.lineTo(bottomLeft.x - railOffset * 1.4, bottomLeft.y);
+    g.lineTo(bottomLeft.x, bottomLeft.y);
+    g.closePath();
+    g.fillPath();
+    g.fillStyle(0x4eb5ff, 0.12);
+    g.beginPath();
+    g.moveTo(topRight.x, topRight.y);
+    g.lineTo(topRight.x + railOffset, topRight.y + 8);
+    g.lineTo(bottomRight.x + railOffset * 1.4, bottomRight.y);
+    g.lineTo(bottomRight.x, bottomRight.y);
+    g.closePath();
+    g.fillPath();
+
+    for (let index = 0; index < floor.depthBandCount; index += 1) {
+      const t = (index + 1) / (floor.depthBandCount + 1);
+      const y = Phaser.Math.Linear(floor.topY, floor.bottomY, t);
+      const bandWidth = Phaser.Math.Linear(floor.topWidth, floor.bottomWidth, t);
+      g.lineStyle(index % 2 === 0 ? 3 : 1, index % 2 === 0 ? 0xfacc15 : 0xe0f2fe, 0.18 + t * 0.18);
+      g.lineBetween(floor.centerX - bandWidth / 2, y, floor.centerX + bandWidth / 2, y);
     }
 
-    g.lineStyle(3, 0xf8fafc, 0.58);
-    g.strokeRoundedRect(284, 170, 392, 194, 10);
-    g.lineBetween(width / 2, 170, width / 2, 364);
+    for (let index = 0; index < floor.laneGlowCount; index += 1) {
+      const t = index / (floor.laneGlowCount - 1);
+      const bottomX = Phaser.Math.Linear(bottomLeft.x + 18, bottomRight.x - 18, t);
+      const color = index % 2 === 0 ? 0x38bdf8 : 0xff5a6b;
+      g.lineStyle(2, color, 0.12);
+      g.lineBetween(depth.vanishPoint.x, depth.vanishPoint.y + 38, bottomX, bottomLeft.y);
+    }
+
+    for (let index = 0; index < 12; index += 1) {
+      const stripeT = index / 12;
+      const topX = Phaser.Math.Linear(topLeft.x + 12, topRight.x - 12, stripeT);
+      const bottomX = Phaser.Math.Linear(bottomLeft.x + 16, bottomRight.x - 16, stripeT);
+      g.fillStyle(index % 2 === 0 ? 0x6d3b24 : 0x56301f, 0.18);
+      g.beginPath();
+      g.moveTo(topX, topLeft.y);
+      g.lineTo(topX + 20, topLeft.y);
+      g.lineTo(bottomX + 36, bottomLeft.y);
+      g.lineTo(bottomX, bottomLeft.y);
+      g.closePath();
+      g.fillPath();
+    }
+
+    g.lineStyle(3, 0xf8fafc, 0.56);
+    g.strokeRoundedRect(topLeft.x + 44, floor.topY + 48, floor.topWidth - 88, 178, 10);
+    g.lineBetween(width / 2, floor.topY + 34, width / 2, floor.bottomY - 36);
     g.beginPath();
     g.arc(
       overlayLayout.centerRing.x,
@@ -435,6 +499,15 @@ export class BasketballScene extends Phaser.Scene {
     );
     g.strokePath();
     g.strokeCircle(overlayLayout.centerRing.x, overlayLayout.centerRing.y, overlayLayout.centerRing.innerRadius);
+
+    for (let index = 0; index < depth.horizonLightCount; index += 1) {
+      const lightX = 214 + index * ((width - 428) / Math.max(1, depth.horizonLightCount - 1));
+      const color = index % 3 === 0 ? 0xff5a6b : index % 3 === 1 ? 0xfacc15 : 0x4eb5ff;
+      g.fillStyle(color, 0.62);
+      g.fillCircle(lightX, floor.topY - 28 - (index % 2) * 5, 3.4);
+      g.lineStyle(2, color, 0.16);
+      g.lineBetween(lightX, floor.topY - 20, floor.centerX, floor.topY + 28);
+    }
 
     g.setDepth(0);
 
@@ -513,13 +586,33 @@ export class BasketballScene extends Phaser.Scene {
     const front = this.add.graphics().setDepth(7);
     const boardX = x - hoop.backboardWidth / 2;
     const boardY = y - 68;
+    const depthOffset = hoop.depthOffset;
+
+    for (let index = 0; index < hoop.supportArmCount; index += 1) {
+      const side = index === 0 ? -1 : 1;
+      const armX = x + side * 58;
+      back.lineStyle(14, 0x020617, 0.72);
+      back.lineBetween(armX + side * 36, boardY - 36, armX + side * 10, boardY + 28);
+      back.lineStyle(5, side === -1 ? 0x38bdf8 : 0xff5a6b, 0.5);
+      back.lineBetween(armX + side * 33, boardY - 34, armX + side * 10, boardY + 24);
+      back.fillStyle(0xe0f2fe, 0.32);
+      back.fillCircle(armX + side * 10, boardY + 26, 4);
+    }
 
     back.lineStyle(16, 0x38bdf8, 0.08);
     back.strokeRoundedRect(boardX - 4, boardY - 4, hoop.backboardWidth + 8, hoop.backboardHeight + 8, 24);
+    back.fillStyle(0x020617, 0.52);
+    back.fillRoundedRect(boardX + depthOffset, boardY + depthOffset, hoop.backboardWidth, hoop.backboardHeight, 22);
+    back.lineStyle(4, 0x0ea5e9, 0.16);
+    back.strokeRoundedRect(boardX + depthOffset, boardY + depthOffset, hoop.backboardWidth, hoop.backboardHeight, 22);
     back.fillStyle(0x07111f, 0.58);
     back.fillRoundedRect(boardX, boardY, hoop.backboardWidth, hoop.backboardHeight, 22);
-    back.fillStyle(0x0ea5e9, 0.08);
+    back.fillStyle(0x0ea5e9, 0.12);
     back.fillRoundedRect(boardX + 8, boardY + 8, hoop.backboardWidth - 16, hoop.backboardHeight - 16, 18);
+    back.fillStyle(0xe0f2fe, 0.08);
+    back.fillRoundedRect(boardX + 18, boardY + 18, hoop.backboardWidth - 36, 24, 12);
+    back.fillStyle(0x38bdf8, 0.06);
+    back.fillRoundedRect(boardX + 26, boardY + 48, hoop.backboardWidth - 52, 32, 14);
     back.lineStyle(2, 0x38bdf8, 0.74);
     back.strokeRoundedRect(boardX, boardY, hoop.backboardWidth, hoop.backboardHeight, 22);
     back.lineStyle(1, 0xe0f2fe, 0.24);
@@ -593,7 +686,12 @@ export class BasketballScene extends Phaser.Scene {
     back.lineStyle(10, 0xff3d55, 0.1);
     back.strokeEllipse(x, rimY + 3, hoop.rimWidth + 32, hoop.rimHeight + 18);
 
-    net.lineStyle(2, 0xe0f2fe, 0.52);
+    net.lineStyle(5, 0x020617, 0.32);
+    for (let index = 0; index < hoop.netLineCount; index += 1) {
+      const offset = -58 + index * (116 / (hoop.netLineCount - 1));
+      net.lineBetween(x + offset + 5, rimY + 15, x + offset * 0.42 + 5, rimY + 72);
+    }
+    net.lineStyle(2, 0xe0f2fe, 0.58);
     for (let index = 0; index < hoop.netLineCount; index += 1) {
       const offset = -58 + index * (116 / (hoop.netLineCount - 1));
       net.lineBetween(x + offset, rimY + 10, x + offset * 0.42, rimY + 66);
@@ -642,6 +740,12 @@ export class BasketballScene extends Phaser.Scene {
     front.lineBetween(x - 92, beamY + 4, x - hoop.rimBeamCenterGap / 2 - 13, beamY + 4);
     front.lineBetween(x + hoop.rimBeamCenterGap / 2 + 13, beamY + 4, x + 92, beamY + 4);
 
+    for (let layer = hoop.rimExtrusionLayers; layer >= 1; layer -= 1) {
+      const layerY = rimY + layer * 4;
+      const alpha = 0.14 + layer * 0.05;
+      front.lineStyle(hoop.rimThickness + 10 - layer, layer % 2 === 0 ? 0x7f1d1d : 0x991b1b, alpha);
+      front.strokeEllipse(x + layer * 1.2, layerY, hoop.rimWidth + layer * 5, hoop.rimHeight + layer * 2);
+    }
     front.lineStyle(hoop.rimThickness + 14, 0xff5a6b, 0.12);
     front.strokeEllipse(x, rimY, hoop.rimWidth + 18, hoop.rimHeight + 12);
     front.lineStyle(hoop.rimThickness + 6, 0xff3d55, 0.28);
@@ -656,30 +760,47 @@ export class BasketballScene extends Phaser.Scene {
 
   private createBasketball(x: number, y: number, skin: GiftBallSkin = getGiftBallSkin()) {
     const { ball } = getShotVisualStyle("red");
-    const glow = this.add.circle(0, 3, ball.glowRadius, skin.glowColor, 0.22);
-    const shadow = this.add.circle(5, 7, ball.radius + 4, skin.darkColor, 0.5);
-    const body = this.add.circle(0, 0, ball.radius, skin.baseColor).setStrokeStyle(4, skin.seamColor, 0.95);
-    const bodyShade = this.add.ellipse(8, 10, ball.radius * 1.32, ball.radius * 0.92, skin.darkColor, 0.16).setAngle(-26);
-    const warmPatch = this.add.ellipse(-7, -6, ball.radius * 1.18, ball.radius * 0.76, skin.accentColor, 0.16).setAngle(-24);
+    const floorShadow = this.add.ellipse(10, ball.shadowOffsetY + 14, ball.radius * 1.74, ball.radius * 0.5, 0x020617, 0.34);
+    const glow = this.add.circle(0, 3, ball.glowRadius, skin.glowColor, 0.2);
+    const outerShade = this.add.circle(5, 8, ball.radius + 5, skin.darkColor, 0.48);
+    const body = this.add.circle(0, 0, ball.radius, skin.baseColor).setStrokeStyle(5, skin.seamColor, 0.95);
+    const bodyShade = this.add.ellipse(10, 12, ball.radius * 1.34, ball.radius * 1.02, skin.darkColor, 0.2).setAngle(-28);
+    const lowerShade = this.add.ellipse(8, 18, ball.radius * 1.16, ball.radius * 0.48, skin.seamColor, 0.18).setAngle(-10);
+    const warmPatch = this.add.ellipse(-9, -8, ball.radius * 1.22, ball.radius * 0.82, skin.accentColor, 0.2).setAngle(-24);
+    const upperGlow = this.add.ellipse(-12, -13, ball.radius * 0.78, ball.radius * 0.42, 0xffffff, 0.12).setAngle(-25);
     const seams = this.add.graphics();
     seams.lineStyle(ball.seamWidth, skin.seamColor, 0.72);
     seams.lineBetween(-ball.radius + 5, -9, ball.radius - 5, -9);
     seams.lineBetween(-ball.radius + 5, 8, ball.radius - 5, 8);
     seams.beginPath();
-    seams.arc(-11, -1, 22, Phaser.Math.DegToRad(-74), Phaser.Math.DegToRad(74), false);
+    seams.arc(-13, -1, 25, Phaser.Math.DegToRad(-76), Phaser.Math.DegToRad(76), false);
     seams.strokePath();
     seams.beginPath();
-    seams.arc(11, -1, 22, Phaser.Math.DegToRad(106), Phaser.Math.DegToRad(254), false);
+    seams.arc(13, -1, 25, Phaser.Math.DegToRad(104), Phaser.Math.DegToRad(256), false);
     seams.strokePath();
     seams.lineStyle(1, skin.accentColor, 0.18);
-    for (let index = 0; index < 12; index += 1) {
-      const angle = (Math.PI * 2 * index) / 12;
+    for (let index = 0; index < 16; index += 1) {
+      const angle = (Math.PI * 2 * index) / 16;
       seams.fillStyle(index % 2 === 0 ? skin.accentColor : skin.darkColor, 0.16);
-      seams.fillCircle(Math.cos(angle) * 15, Math.sin(angle) * 12, 1.6);
+      seams.fillCircle(Math.cos(angle) * 18, Math.sin(angle) * 14, 1.8);
     }
-    const highlight = this.add.circle(-9, -10, ball.highlightRadius, skin.accentColor, 0.72);
-    const smallHighlight = this.add.circle(-15, -17, 3, 0xffffff, 0.48);
-    const objects: Phaser.GameObjects.GameObject[] = [glow, shadow, body, bodyShade, warmPatch, seams, highlight, smallHighlight];
+    const highlight = this.add.circle(-10, -11, ball.highlightRadius, skin.accentColor, 0.7);
+    const smallHighlight = this.add.circle(-18, -20, 3.4, 0xffffff, 0.52);
+    const microHighlight = this.add.circle(-4, -21, 2.2, 0xffffff, 0.34);
+    const objects: Phaser.GameObjects.GameObject[] = [
+      floorShadow,
+      glow,
+      outerShade,
+      body,
+      bodyShade,
+      lowerShade,
+      warmPatch,
+      upperGlow,
+      seams,
+      highlight,
+      smallHighlight,
+      microHighlight
+    ];
 
     if (skin.icon) {
       const iconGlow = this.add.circle(9, -8, 13, skin.accentColor, 0.22);

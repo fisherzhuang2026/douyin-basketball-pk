@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getBallRotation,
+  getCourtDepthStyle,
   getCourtOverlayLayout,
   getGiftBallSkin,
   getGiftEffectTiming,
@@ -17,10 +18,12 @@ describe("court visual style", () => {
     expect(style.trailLayers.map((layer) => layer.name)).toEqual(["outerGlow", "ribbon", "core", "spark", "highlight"]);
     expect(style.trailLayers[0].width).toBeGreaterThan(style.trailLayers[1].width);
     expect(style.ball).toMatchObject({
-      radius: 28,
-      glowRadius: 42,
+      radius: 32,
+      glowRadius: 50,
       seamWidth: 3,
-      highlightRadius: 9
+      highlightRadius: 11,
+      shadowOffsetY: 12,
+      specularCount: 3
     });
     expect(style.hoop.netLineCount).toBeGreaterThanOrEqual(8);
     expect(style.hoop.netLineCount).toBeGreaterThanOrEqual(10);
@@ -34,7 +37,21 @@ describe("court visual style", () => {
     expect(style.hoop.sideRailCount).toBe(2);
     expect(style.hoop.rimBeamSegmentCount).toBeGreaterThanOrEqual(8);
     expect(style.hoop.rimBeamCenterGap).toBeGreaterThanOrEqual(34);
+    expect(style.hoop.depthOffset).toBeGreaterThanOrEqual(14);
+    expect(style.hoop.supportArmCount).toBeGreaterThanOrEqual(2);
+    expect(style.hoop.rimExtrusionLayers).toBeGreaterThanOrEqual(3);
     expect(style.hitEffect.ringDuration).toBeGreaterThanOrEqual(1100);
+  });
+
+  it("uses a 3D arena depth model instead of a flat court slab", () => {
+    const depth = getCourtDepthStyle(960, 540);
+
+    expect(depth.vanishPoint.y).toBeLessThan(depth.floor.topY);
+    expect(depth.floor.topWidth).toBeLessThan(depth.floor.bottomWidth);
+    expect(depth.floor.depthBandCount).toBeGreaterThanOrEqual(5);
+    expect(depth.floor.sideRailWidth).toBeGreaterThanOrEqual(28);
+    expect(depth.floor.shadowAlpha).toBeGreaterThan(0.25);
+    expect(depth.horizonLightCount).toBeGreaterThanOrEqual(7);
   });
 
   it("samples a smooth fading arc instead of a single flat line", () => {
